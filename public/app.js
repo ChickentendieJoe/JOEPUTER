@@ -300,6 +300,40 @@
 
   // ---------- TODAY ----------
 
+  function showInputModal(title, placeholder, callback) {
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000;";
+    modal.innerHTML = `<div style="background:var(--card);padding:20px;border-radius:8px;min-width:280px;border:2px solid var(--gold);">
+      <div style="margin-bottom:12px;font-weight:700;color:var(--gold);">${title}</div>
+      <input type="text" placeholder="${placeholder}" style="width:100%;padding:8px;background:var(--card-alt);border:1px solid var(--border);color:var(--text);border-radius:4px;box-sizing:border-box;font-size:14px;" />
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button style="flex:1;padding:8px;background:var(--gold);color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:700;">OK</button>
+        <button style="flex:1;padding:8px;background:var(--border);color:var(--text);border:none;border-radius:4px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>`;
+
+    document.body.appendChild(modal);
+    const input = modal.querySelector("input");
+    const [okBtn, cancelBtn] = modal.querySelectorAll("button");
+
+    const cleanup = () => {
+      if (document.body.contains(modal)) document.body.removeChild(modal);
+    };
+
+    okBtn.addEventListener("click", () => {
+      const value = input.value.trim();
+      cleanup();
+      if (value) callback(value);
+    });
+
+    cancelBtn.addEventListener("click", cleanup);
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") okBtn.click();
+    });
+
+    input.focus();
+  }
+
   function showWorldPicker(block, row, el) {
     const popup = document.createElement("div");
     popup.style.cssText = "position:absolute;background:var(--card-alt);border:1px solid var(--gold);border-radius:8px;z-index:1000;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.5);";
@@ -390,26 +424,22 @@
 
     if (newBtn) {
       newBtn.addEventListener("click", () => {
-        const name = prompt("New schedule name (e.g., Chill Day, Grind Day):");
-        if (name && name.trim()) {
-          state.schedules[name.trim()] = [];
+        showInputModal("New Schedule", "e.g., Chill Day, Grind Day", (name) => {
+          state.schedules[name] = [];
           state.schedule = [];
           saveState();
-          alert("✅ Schedule created! Add blocks now.");
           renderToday();
-        }
+        });
       });
     }
 
     if (saveBtn) {
       saveBtn.addEventListener("click", () => {
-        const name = prompt("Save current schedule as:");
-        if (name && name.trim()) {
-          state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
+        showInputModal("Save Schedule", "Enter schedule name", (name) => {
+          state.schedules[name] = JSON.parse(JSON.stringify(state.schedule));
           saveState();
-          alert("Schedule saved! ✅");
           renderToday();
-        }
+        });
       });
     }
 
