@@ -1,81 +1,107 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "joeputer_state_v1";
+  const STORAGE_KEY = "joeputer_state_v3";
 
-  const MENTOR_TOKEN_INSTRUCTIONS = `
-You are chatting inside "Joeputer", Joe's personal command-center app. Stay fully in character as this mentor. Keep replies short and punchy (2-5 sentences), like a text message, not an essay.
-
-You control your own mission checklist. When it genuinely helps, include hidden control tokens anywhere in your reply — the app strips them before Joe sees the text:
-[[ADD_MISSION: short mission text]] — add a mission
-[[REMOVE_MISSION: text matching an existing mission]] — remove one
-[[CLEAR_MISSIONS]] — wipe the whole list
-Only emit a token when you intend to actually change the checklist right now. Never explain the token syntax to Joe.`.trim();
-
-  const MENTOR_DEFS = [
+  const WORLD_DEFS = [
     {
-      id: "mj",
-      name: "MJ",
-      category: "Basketball",
-      desc: "Ex-pro, ruthless competitor. Talks in short, sharp lines about reps, fundamentals, and killer instinct.",
+      id: "basketball",
+      name: "Basketball",
+      mentor: "MJ",
       persona: "You are MJ, a legendary, ruthlessly competitive basketball mentor coaching Joe. Demand excellence, call out excuses, but back it with real fundamentals: footwork, reps, film study, conditioning.",
-      missions: ["50 makes from 3 spots", "Watch one game-film clip", "Box out on every rebound rep"],
+      timeStart: "13:00",
+      timeEnd: "14:00",
       offline: [
         "Winners are workers. Get your reps in and stop talking about it — MJ (offline)",
         "Nobody remembers the practice you skipped. Get on the court. — MJ (offline)",
         "Fundamentals win championships. Footwork first, then shoot. — MJ (offline)",
       ],
+      feedSentences: [
+        "MJ practiced free throws 500+ times a day—mastery through repetition.",
+        "Footwork beats athleticism. Build a foundation before you fly.",
+        "Record every session: film study catches what feel misses.",
+        "The best shooters in the world miss 40% of their shots.",
+        "Conditioning isn't punishment—it's your edge when others fade.",
+      ],
     },
     {
-      id: "rachel",
-      name: "Ms. Rachel",
-      category: "Daycare",
-      desc: "Warm, patient early-childhood expert. Gentle but firm about routines, prep, and connection time.",
+      id: "daycare",
+      name: "Daycare",
+      mentor: "Ms. Rachel",
       persona: "You are Ms. Rachel, a warm, patient early-childhood education expert mentoring Joe on daycare logistics and being present with his kid. Encourage routines, prep-ahead habits, and small moments of connection.",
-      missions: ["Pack tomorrow's daycare bag tonight", "One learning song during pickup", "3 moments of positive reinforcement today"],
+      timeStart: "09:30",
+      timeEnd: "18:30",
       offline: [
         "Little wins count — pack that bag tonight and tomorrow morning gets easier. — Ms. Rachel (offline)",
         "Even five minutes of real eye-contact play makes a difference today. — Ms. Rachel (offline)",
         "Consistency is the whole game with little ones. You've got this. — Ms. Rachel (offline)",
       ],
+      feedSentences: [
+        "Kids remember a parent's full attention more than perfect activities.",
+        "Prep the bag the night before—mornings are sacred.",
+        "One learning song beats screens. Pick one, sing it daily.",
+        "Routines feel boring to you but give kids security.",
+        "Connection happens in 5-minute pockets, not perfect afternoons.",
+      ],
     },
     {
-      id: "jeff",
-      name: "Jeff Nippard",
-      category: "Workout",
-      desc: "Evidence-based strength coach. Precise, technical, no bro-science — just programming and progressive overload.",
+      id: "workout",
+      name: "Workout",
+      mentor: "Jeff Nippard",
       persona: "You are Jeff Nippard, an evidence-based strength and physique coach mentoring Joe. Be precise and technical about programming, progressive overload, and recovery. No bro-science, cite reasoning briefly.",
-      missions: ["Hit today's programmed lift", "Log sets/reps/RPE", "Hit protein target"],
+      timeStart: "06:30",
+      timeEnd: "07:15",
       offline: [
         "Progressive overload beats motivation. Add a rep or a plate today. — Jeff (offline)",
         "Log the session — data beats vibes for long-term gains. — Jeff (offline)",
         "Recovery is part of the program too. Sleep and protein, don't skip them. — Jeff (offline)",
       ],
+      feedSentences: [
+        "Progressive overload over time beats heroic single workouts.",
+        "Logging sessions tells you what works—feelings lie.",
+        "Muscles grow during rest, not in the gym. Sleep matters.",
+        "90% of gains come from consistent programming, not exercise selection.",
+        "Protein intake matters; aim for 0.8-1g per lb bodyweight.",
+      ],
     },
     {
-      id: "trav",
-      name: "Trav",
-      category: "Aphantasia Brand",
-      desc: "Sharp niche-brand strategist. Obsessed with clarity, positioning, and turning a weird niche into a real audience.",
+      id: "aphantasia",
+      name: "Aphantasia Brand",
+      mentor: "Trav",
       persona: "You are Trav, a sharp brand strategist mentoring Joe on building his Aphantasia-focused personal brand. Push for clarity of message, consistent posting, and turning a niche condition into a relatable, growing audience.",
-      missions: ["Post one piece of aphantasia content", "DM 3 potential collaborators", "Write down today's brand insight"],
+      timeStart: "20:00",
+      timeEnd: "20:30",
       offline: [
         "Niche is your moat. Post the thing you almost thought was too specific. — Trav (offline)",
         "One clear post beats five vague ones. Ship it. — Trav (offline)",
         "Reach out to one person in the space today — brand is a network game. — Trav (offline)",
       ],
+      feedSentences: [
+        "Aphantasia is weird—that's your edge, not your weakness.",
+        "Your niche audience is 10x more loyal than a generic crowd.",
+        "Clarity of message beats fancy production every time.",
+        "One DM a day to someone in the space compounds fast.",
+        "The smallest 1% of the internet still has millions of people.",
+      ],
     },
     {
-      id: "gideon",
-      name: "Gideon",
-      category: "Content",
-      desc: "High-output content producer. Obsessed with shipping daily, hooks, and editing fast.",
+      id: "content",
+      name: "Content",
+      mentor: "Gideon",
       persona: "You are Gideon, a high-output content producer mentoring Joe. Obsess over daily shipping, strong hooks in the first 2 seconds, and fast, decisive editing over perfectionism.",
-      missions: ["Film one clip", "Edit + post one short", "Reply to comments for 10 minutes"],
+      timeStart: "09:00",
+      timeEnd: "10:30",
       offline: [
         "Done beats perfect. Post the rough cut. — Gideon (offline)",
         "Your hook is the whole battle — nail the first 2 seconds. — Gideon (offline)",
         "Ship something today, even small. Momentum compounds. — Gideon (offline)",
+      ],
+      feedSentences: [
+        "The first 2 seconds determine if 100k people watch or 100.",
+        "Post rough cuts, not polished videos. Speed wins.",
+        "Your 10th video will be 10x better than your 1st.",
+        "Momentum beats perfection—ship something today.",
+        "Thumbnails and hooks are 80% of your success.",
       ],
     },
   ];
@@ -85,45 +111,57 @@ Only emit a token when you intend to actually change the checklist right now. Ne
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  function formatDate() {
+    const d = new Date();
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${days[d.getDay()]} ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+
   function uid() {
     return Math.random().toString(36).slice(2, 10);
   }
 
   function defaultSchedule() {
     return [
-      { id: uid(), start: "06:30", end: "07:15", name: "Morning workout", points: 10, done: false },
-      { id: uid(), start: "07:15", end: "08:00", name: "Daycare drop-off prep", points: 10, done: false },
-      { id: uid(), start: "09:00", end: "10:30", name: "Content filming/editing", points: 15, done: false },
-      { id: uid(), start: "13:00", end: "14:00", name: "Basketball reps", points: 10, done: false },
-      { id: uid(), start: "17:00", end: "18:00", name: "Daycare pickup + play", points: 10, done: false },
-      { id: uid(), start: "20:00", end: "20:30", name: "Aphantasia brand work", points: 10, done: false },
+      { id: uid(), start: "06:30", end: "07:15", name: "Morning workout", points: 10, done: false, worldId: "workout" },
+      { id: uid(), start: "07:15", end: "08:00", name: "Daycare drop-off prep", points: 10, done: false, worldId: "daycare" },
+      { id: uid(), start: "09:00", end: "10:30", name: "Content filming/editing", points: 15, done: false, worldId: "content" },
+      { id: uid(), start: "13:00", end: "14:00", name: "Basketball reps", points: 10, done: false, worldId: "basketball" },
+      { id: uid(), start: "17:00", end: "18:00", name: "Daycare pickup + play", points: 10, done: false, worldId: "daycare" },
+      { id: uid(), start: "20:00", end: "20:30", name: "Aphantasia brand work", points: 10, done: false, worldId: "aphantasia" },
     ];
   }
 
   function defaultState() {
-    const mentors = {};
-    MENTOR_DEFS.forEach((m) => {
-      mentors[m.id] = {
-        missions: m.missions.map((text) => ({ id: uid(), text, done: false })),
+    const worlds = {};
+    WORLD_DEFS.forEach((w) => {
+      worlds[w.id] = {
+        goal: w.id === "basketball" ? "Dunk by 2027 & get good at basketball" : `Master ${w.name}`,
+        missions: [],
+        notes: [],
         chat: [
           {
             role: "assistant",
-            content: `Hey, it's ${m.name}. ${m.desc} What are we working on?`,
+            content: `Hey, it's ${w.mentor}. I'm here to coach you through ${w.name}. What are we working on today?`,
           },
         ],
+        feed: [],
+        lastFeedGen: null,
       };
     });
 
     return {
       meta: { lastResetDate: todayStr() },
       schedule: defaultSchedule(),
+      worlds,
+      history: {},
       rules: {
         pointsPerBlock: 10,
         dailyMinimum: 40,
         punishmentText: "No phone scrolling tonight. Lights out by 9:30, and tomorrow you owe a double session.",
         model: "claude-haiku-4-5-20251001",
       },
-      mentors,
     };
   }
 
@@ -136,20 +174,26 @@ Only emit a token when you intend to actually change the checklist right now. Ne
       state = defaultState();
     }
 
-    // backfill in case of partial/old state shape
     const fresh = defaultState();
     state.meta = state.meta || fresh.meta;
     state.schedule = Array.isArray(state.schedule) ? state.schedule : fresh.schedule;
+    state.worlds = state.worlds || fresh.worlds;
+    state.history = state.history || {};
     state.rules = Object.assign({}, fresh.rules, state.rules || {});
-    state.mentors = state.mentors || {};
-    MENTOR_DEFS.forEach((m) => {
-      if (!state.mentors[m.id]) state.mentors[m.id] = fresh.mentors[m.id];
+
+    WORLD_DEFS.forEach((w) => {
+      if (!state.worlds[w.id]) state.worlds[w.id] = fresh.worlds[w.id];
     });
 
-    // daily reset: new day clears "done" flags so points restart
     if (state.meta.lastResetDate !== todayStr()) {
       state.schedule.forEach((b) => (b.done = false));
-      state.meta.lastResetDate = todayStr();
+      const today = todayStr();
+      state.history[today] = { blocks: [], totalPoints: 0 };
+      state.meta.lastResetDate = today;
+    }
+
+    if (!state.history[todayStr()]) {
+      state.history[todayStr()] = { blocks: [], totalPoints: 0 };
     }
 
     return state;
@@ -161,8 +205,10 @@ Only emit a token when you intend to actually change the checklist right now. Ne
 
   let state = loadState();
   let activeTab = "today";
-  let activeMentorId = MENTOR_DEFS[0].id;
+  let activeWorldId = "basketball";
   let backendOnline = true;
+  let feedSentences = [];
+  let feedIndex = 0;
 
   // ---------- rendering ----------
 
@@ -179,26 +225,6 @@ Only emit a token when you intend to actually change the checklist right now. Ne
     return h * 60 + m;
   }
 
-  function findCurrentBlock() {
-    const now = currentMinutes();
-    return state.schedule.find((b) => {
-      const start = toMinutes(b.start);
-      const end = toMinutes(b.end);
-      return now >= start && now < end;
-    });
-  }
-
-  function totalPoints() {
-    return state.schedule.filter((b) => b.done).reduce((sum, b) => sum + Number(b.points || 0), 0);
-  }
-
-  function updateBanner() {
-    const block = findCurrentBlock();
-    bannerEl.innerHTML = block
-      ? `<span class="banner-label">RIGHT NOW YOU SHOULD BE:</span>${escapeHtml(block.name)}`
-      : `<span class="banner-label">RIGHT NOW:</span>Free time — nothing scheduled`;
-  }
-
   function escapeHtml(str) {
     const div = document.createElement("div");
     div.textContent = str == null ? "" : String(str);
@@ -213,22 +239,42 @@ Only emit a token when you intend to actually change the checklist right now. Ne
     render();
   }
 
+  function findCurrentWorld() {
+    const now = currentMinutes();
+    for (let wid of Object.keys(state.worlds)) {
+      const def = WORLD_DEFS.find((w) => w.id === wid);
+      const start = toMinutes(def.timeStart);
+      const end = toMinutes(def.timeEnd);
+      if (now >= start && now < end) return def;
+    }
+    return null;
+  }
+
+  function updateBanner() {
+    const w = findCurrentWorld();
+    bannerEl.innerHTML = w
+      ? `<span class="banner-label">RIGHT NOW YOU SHOULD BE:</span>${escapeHtml(w.name)}`
+      : `<span class="banner-label">RIGHT NOW:</span>Free time — nothing scheduled`;
+  }
+
   function render() {
     updateBanner();
     if (activeTab === "today") renderToday();
-    else if (activeTab === "mentors") renderMentors();
-    else renderRules();
+    else if (activeTab === "worlds") renderWorlds();
+    else if (activeTab === "feed") renderFeed();
+    else if (activeTab === "rules") renderRules();
   }
 
   // ---------- TODAY ----------
 
   function renderToday() {
-    const pts = totalPoints();
+    const pts = state.schedule.filter((b) => b.done).reduce((sum, b) => sum + Number(b.points || 0), 0);
     const min = Number(state.rules.dailyMinimum || 0);
     const pct = min > 0 ? Math.min(100, Math.round((pts / min) * 100)) : 100;
     const underMinimum = pts < min;
 
-    let html = `<h2 class="section-title">Scorecard</h2>
+    let html = `<div class="date-header">${escapeHtml(formatDate())}</div>
+    <h2 class="section-title">Scorecard</h2>
     <div class="card scorecard">
       <div>
         <div class="points-num">${pts}</div>
@@ -243,16 +289,19 @@ Only emit a token when you intend to actually change the checklist right now. Ne
 
     html += `<h2 class="section-title">Schedule</h2><div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
-      html += `<div class="mission-empty">No blocks yet — add one below.</div>`;
+      html += `<div class="mission-empty">No blocks yet.</div>`;
     } else {
       state.schedule
         .slice()
         .sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
         .forEach((b) => {
+          const world = WORLD_DEFS.find((w) => w.id === b.worldId);
+          const worldLabel = world ? `[${world.name}]` : "";
           html += `
           <div class="block ${b.done ? "done" : ""}" data-id="${b.id}">
             <input type="checkbox" class="block-done" ${b.done ? "checked" : ""} />
             <div class="block-fields">
+              <span style="font-size:11px; color:var(--gold); font-weight:700; flex-shrink:0;">${escapeHtml(worldLabel)}</span>
               <input type="time" class="block-start" value="${b.start}" />
               <input type="time" class="block-end" value="${b.end}" />
               <input type="text" class="block-name" value="${escapeHtml(b.name)}" placeholder="Block name" />
@@ -268,17 +317,45 @@ Only emit a token when you intend to actually change the checklist right now. Ne
     tabContent.innerHTML = html;
 
     document.getElementById("add-block-btn").addEventListener("click", () => {
+      showAddBlockDialog();
+    });
+
+    function showAddBlockDialog() {
+      const worldOptions = WORLD_DEFS.map((w) => `${w.id}:${w.name}`).join("|");
+      const prompt_text = `Enter block details (separated by |):\nFormat: world|start-time|end-time|mission-name\n\nWorlds: ${worldOptions}\n\nExample: basketball|13:00|14:00|50 makes from 3-point spots`;
+      const input = prompt(prompt_text);
+      if (!input) return;
+
+      const parts = input.split("|").map((s) => s.trim());
+      if (parts.length !== 4) {
+        alert("Invalid format. Use: world|start|end|mission");
+        return;
+      }
+
+      const [worldId, start, end, name] = parts;
+      const world = WORLD_DEFS.find((w) => w.id === worldId);
+      if (!world) {
+        alert(`World "${worldId}" not found.`);
+        return;
+      }
+
+      if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) {
+        alert("Time format must be HH:MM");
+        return;
+      }
+
       state.schedule.push({
         id: uid(),
-        start: "09:00",
-        end: "10:00",
-        name: "New block",
+        start,
+        end,
+        name,
         points: Number(state.rules.pointsPerBlock || 10),
         done: false,
+        worldId,
       });
       saveState();
       renderToday();
-    });
+    }
 
     document.querySelectorAll("#schedule-card .block").forEach((row) => {
       const id = row.dataset.id;
@@ -287,6 +364,12 @@ Only emit a token when you intend to actually change the checklist right now. Ne
 
       row.querySelector(".block-done").addEventListener("change", (e) => {
         block.done = e.target.checked;
+        const today = todayStr();
+        if (!state.history[today]) state.history[today] = { blocks: [], totalPoints: 0 };
+        if (e.target.checked) {
+          state.history[today].blocks.push({ name: block.name, points: block.points, time: new Date().toLocaleTimeString() });
+          state.history[today].totalPoints = (state.history[today].totalPoints || 0) + Number(block.points || 0);
+        }
         saveState();
         renderToday();
       });
@@ -318,130 +401,162 @@ Only emit a token when you intend to actually change the checklist right now. Ne
     });
   }
 
-  // ---------- MENTORS ----------
+  // ---------- WORLDS ----------
 
-  function mentorDef(id) {
-    return MENTOR_DEFS.find((m) => m.id === id);
+  function worldDef(id) {
+    return WORLD_DEFS.find((w) => w.id === id);
   }
 
-  function renderMentors() {
-    let chipsHtml = `<div class="mentor-list">`;
-    MENTOR_DEFS.forEach((m) => {
-      chipsHtml += `<button class="mentor-chip ${m.id === activeMentorId ? "active" : ""}" data-id="${m.id}">${escapeHtml(m.name)}</button>`;
+  function renderWorlds() {
+    let html = `<div class="world-selector">`;
+    WORLD_DEFS.forEach((w) => {
+      html += `<button class="world-btn ${w.id === activeWorldId ? "active" : ""}" data-id="${w.id}">${escapeHtml(w.name)}</button>`;
     });
-    chipsHtml += `</div>`;
+    html += `</div>`;
 
-    const def = mentorDef(activeMentorId);
-    const mstate = state.mentors[activeMentorId];
+    const def = worldDef(activeWorldId);
+    const wstate = state.worlds[activeWorldId];
 
-    let missionsHtml = "";
-    if (mstate.missions.length === 0) {
-      missionsHtml = `<div class="mission-empty">No missions right now.</div>`;
+    html += `
+    <div class="card world-goal">
+      <label class="field-label">Main Goal</label>
+      <input type="text" class="goal-input" value="${escapeHtml(wstate.goal)}" placeholder="e.g., Dunk by 2027" />
+    </div>
+
+    <h2 class="section-title">Missions (Edit Daily)</h2>
+    <div class="card" id="missions-editor">`;
+
+    if (wstate.missions.length === 0) {
+      html += `<div class="mission-empty">No missions yet. Add one below.</div>`;
     } else {
-      mstate.missions.forEach((ms) => {
-        missionsHtml += `
-        <div class="mission-item ${ms.done ? "done" : ""}" data-id="${ms.id}">
-          <input type="checkbox" class="mission-check" ${ms.done ? "checked" : ""} />
-          <span>${escapeHtml(ms.text)}</span>
+      wstate.missions.forEach((m) => {
+        html += `
+        <div class="mission-edit" data-id="${m.id}">
+          <input type="checkbox" class="mission-check" ${m.done ? "checked" : ""} />
+          <input type="text" class="mission-text" value="${escapeHtml(m.text)}" placeholder="Mission" />
+          <button class="icon-btn mission-delete">✕</button>
         </div>`;
       });
     }
 
-    let chatHtml = "";
-    mstate.chat.forEach((msg) => {
-      chatHtml += `<div class="msg ${msg.role}">${escapeHtml(msg.content)}${msg.offline ? '<span class="offline-tag">offline reply</span>' : ""}</div>`;
+    html += `</div>
+    <button class="btn full" id="add-mission-btn">+ Add mission</button>
+
+    <h2 class="section-title">Chat with ${escapeHtml(def.mentor)}</h2>
+    <div class="card">
+      <div class="chat-log" id="chat-log">`;
+
+    wstate.chat.forEach((msg) => {
+      html += `<div class="msg ${msg.role}">${escapeHtml(msg.content)}${msg.offline ? '<span class="offline-tag">offline reply</span>' : ""}</div>`;
     });
 
-    tabContent.innerHTML = `
-      ${chipsHtml}
-      <div class="card mentor-header">
-        <div class="mname">${escapeHtml(def.name)}</div>
-        <div class="mcat">${escapeHtml(def.category)}</div>
-        <div class="mdesc">${escapeHtml(def.desc)}</div>
+    html += `</div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Ask ${escapeHtml(def.mentor)}…" />
+        <button class="btn" id="chat-send">Send</button>
       </div>
-      <h2 class="section-title">Missions</h2>
-      <div class="card" id="mission-card">${missionsHtml}</div>
-      <h2 class="section-title">Chat</h2>
-      <div class="card">
-        <div class="chat-log" id="chat-log">${chatHtml}</div>
-        <div class="chat-input-row">
-          <input type="text" id="chat-input" placeholder="Message ${escapeHtml(def.name)}…" />
-          <button class="btn" id="chat-send">Send</button>
-        </div>
-        <div class="status-pill ${backendOnline ? "online" : "offline"}" id="status-pill">${backendOnline ? "backend online" : "backend unreachable — offline mode"}</div>
-      </div>
-    `;
+      <div class="status-pill ${backendOnline ? "online" : "offline"}">${backendOnline ? "backend online" : "backend unreachable"}</div>
+    </div>
+
+    <h2 class="section-title">Important Points (delete if redundant)</h2>
+    <div class="card" id="notes-card">`;
+
+    if (wstate.notes.length === 0) {
+      html += `<div class="mission-empty">No notes yet. AI will add important points here.</div>`;
+    } else {
+      wstate.notes.forEach((n) => {
+        html += `
+        <div class="note-item" data-id="${n.id}">
+          <span>${escapeHtml(n.text)}</span>
+          <button class="icon-btn note-delete">✕</button>
+        </div>`;
+      });
+    }
+
+    html += `</div>`;
+
+    tabContent.innerHTML = html;
 
     const chatLog = document.getElementById("chat-log");
-    chatLog.scrollTop = chatLog.scrollHeight;
+    if (chatLog) chatLog.scrollTop = chatLog.scrollHeight;
 
-    document.querySelectorAll(".mentor-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        activeMentorId = chip.dataset.id;
-        renderMentors();
+    document.querySelectorAll(".world-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeWorldId = btn.dataset.id;
+        renderWorlds();
       });
     });
 
-    document.querySelectorAll("#mission-card .mission-check").forEach((cb) => {
-      cb.addEventListener("change", (e) => {
-        const id = e.target.closest(".mission-item").dataset.id;
-        const ms = mstate.missions.find((x) => x.id === id);
-        if (ms) ms.done = e.target.checked;
+    document.querySelector(".goal-input").addEventListener("change", (e) => {
+      wstate.goal = e.target.value;
+      saveState();
+    });
+
+    document.getElementById("add-mission-btn").addEventListener("click", () => {
+      wstate.missions.push({ id: uid(), text: "", done: false });
+      saveState();
+      renderWorlds();
+    });
+
+    document.querySelectorAll("#missions-editor .mission-edit").forEach((row) => {
+      const id = row.dataset.id;
+      const m = wstate.missions.find((x) => x.id === id);
+      if (!m) return;
+
+      row.querySelector(".mission-check").addEventListener("change", (e) => {
+        m.done = e.target.checked;
         saveState();
-        renderMentors();
+        renderWorlds();
+      });
+
+      row.querySelector(".mission-text").addEventListener("change", (e) => {
+        m.text = e.target.value;
+        saveState();
+      });
+
+      row.querySelector(".mission-delete").addEventListener("click", () => {
+        wstate.missions = wstate.missions.filter((x) => x.id !== id);
+        saveState();
+        renderWorlds();
+      });
+    });
+
+    document.querySelectorAll("#notes-card .note-delete").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.target.closest(".note-item").dataset.id;
+        wstate.notes = wstate.notes.filter((n) => n.id !== id);
+        saveState();
+        renderWorlds();
       });
     });
 
     const input = document.getElementById("chat-input");
     const send = document.getElementById("chat-send");
-    const doSend = () => sendMentorMessage(activeMentorId, input.value.trim());
+    const doSend = () => sendWorldChat(activeWorldId, input.value.trim());
     send.addEventListener("click", doSend);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") doSend();
     });
   }
 
-  function applyMissionTokens(mentorId, rawText) {
-    const mstate = state.mentors[mentorId];
-    let text = rawText;
-
-    text = text.replace(/\[\[CLEAR_MISSIONS\]\]/gi, () => {
-      mstate.missions = [];
-      return "";
-    });
-
-    text = text.replace(/\[\[ADD_MISSION:\s*([^\]]+?)\s*\]\]/gi, (_, missionText) => {
-      mstate.missions.push({ id: uid(), text: missionText.trim(), done: false });
-      return "";
-    });
-
-    text = text.replace(/\[\[REMOVE_MISSION:\s*([^\]]+?)\s*\]\]/gi, (_, missionText) => {
-      const needle = missionText.trim().toLowerCase();
-      const idx = mstate.missions.findIndex((m) => m.text.toLowerCase().includes(needle));
-      if (idx !== -1) mstate.missions.splice(idx, 1);
-      return "";
-    });
-
-    return text.replace(/\s{2,}/g, " ").trim();
-  }
-
-  async function sendMentorMessage(mentorId, text) {
+  async function sendWorldChat(worldId, text) {
     if (!text) return;
-    const def = mentorDef(mentorId);
-    const mstate = state.mentors[mentorId];
+    const def = worldDef(worldId);
+    const wstate = state.worlds[worldId];
 
-    mstate.chat.push({ role: "user", content: text });
+    wstate.chat.push({ role: "user", content: text });
     saveState();
-    renderMentors();
+    renderWorlds();
 
-    const apiMessages = mstate.chat.map((m) => ({ role: m.role, content: m.content }));
+    const apiMessages = wstate.chat.map((m) => ({ role: m.role, content: m.content }));
+    const context = `World: ${def.name}\nGoal: ${wstate.goal}\nMissions: ${wstate.missions.map((m) => m.text).join(", ") || "none yet"}`;
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          system: `${def.persona}\n\n${MENTOR_TOKEN_INSTRUCTIONS}`,
+          system: `${def.persona}\n\nContext:\n${context}\n\nUser manages missions themselves. Your job is to coach and remember important points. Keep replies conversational and engaging (2-4 sentences). If you need to save something important, start the line with [NOTE: ...].`,
           messages: apiMessages,
           model: state.rules.model,
         }),
@@ -451,27 +566,99 @@ Only emit a token when you intend to actually change the checklist right now. Ne
       const data = await res.json();
       backendOnline = true;
 
-      const cleaned = applyMissionTokens(mentorId, data.text || "");
-      mstate.chat.push({ role: "assistant", content: cleaned || "…" });
+      const reply = data.text || "…";
+      const notes = [];
+      const cleaned = reply
+        .split("\n")
+        .filter((line) => {
+          if (line.startsWith("[NOTE:")) {
+            notes.push({ id: uid(), text: line.replace(/^\[NOTE:\s*/, "").replace(/\]$/, "") });
+            return false;
+          }
+          return true;
+        })
+        .join("\n")
+        .trim();
+
+      wstate.chat.push({ role: "assistant", content: cleaned || "…" });
+      notes.forEach((n) => {
+        if (!wstate.notes.find((x) => x.text === n.text)) wstate.notes.push(n);
+      });
     } catch (err) {
       backendOnline = false;
       const lines = def.offline;
       const line = lines[Math.floor(Math.random() * lines.length)];
-      mstate.chat.push({ role: "assistant", content: line, offline: true });
+      wstate.chat.push({ role: "assistant", content: line, offline: true });
     }
 
     saveState();
-    renderMentors();
+    renderWorlds();
+  }
+
+  // ---------- FEED (TikTok-style, shuffled) ----------
+
+  function getAllFeedSentences() {
+    const all = [];
+    WORLD_DEFS.forEach((def) => {
+      def.feedSentences.forEach((sent) => {
+        all.push({ world: def.name, worldId: def.id, text: sent });
+      });
+    });
+    // Shuffle array
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    return all;
+  }
+
+  function renderFeed() {
+    if (feedSentences.length === 0) {
+      feedSentences = getAllFeedSentences();
+    }
+    if (feedSentences.length === 0) {
+      tabContent.innerHTML = `<div class="feed-empty">No ideas yet.</div>`;
+      return;
+    }
+
+    feedIndex = feedIndex % feedSentences.length;
+    const current = feedSentences[feedIndex];
+
+    let html = `<div class="feed-tiktok">
+      <div class="feed-slide">
+        <div class="feed-world-tag">${escapeHtml(current.world)}</div>
+        <div class="feed-sentence">${escapeHtml(current.text)}</div>
+      </div>
+      <div class="feed-nav">
+        <button id="feed-prev" class="feed-btn">← Prev</button>
+        <span class="feed-counter">${feedIndex + 1} / ${feedSentences.length}</span>
+        <button id="feed-next" class="feed-btn">Next →</button>
+      </div>
+    </div>`;
+
+    tabContent.innerHTML = html;
+
+    document.getElementById("feed-prev").addEventListener("click", () => {
+      feedIndex = (feedIndex - 1 + feedSentences.length) % feedSentences.length;
+      renderFeed();
+    });
+
+    document.getElementById("feed-next").addEventListener("click", () => {
+      feedIndex = (feedIndex + 1) % feedSentences.length;
+      renderFeed();
+    });
   }
 
   // ---------- RULES ----------
 
   function renderRules() {
-    tabContent.innerHTML = `
-      <h2 class="section-title">Rules</h2>
+    const historyEntries = Object.entries(state.history).reverse().slice(0, 30);
+
+    let html = `
+      <h2 class="section-title">Configuration</h2>
       <div class="card">
         <div class="field-group">
-          <label>Points per new block</label>
+          <label>Points per block</label>
           <input type="number" id="rule-points" min="0" value="${state.rules.pointsPerBlock}" />
         </div>
         <div class="field-group">
@@ -487,7 +674,31 @@ Only emit a token when you intend to actually change the checklist right now. Ne
           <select id="rule-model"><option>Loading…</option></select>
         </div>
       </div>
-    `;
+
+      <h2 class="section-title">History</h2>
+      <div class="card" id="history-card">`;
+
+    if (historyEntries.length === 0) {
+      html += `<div class="mission-empty">No history yet.</div>`;
+    } else {
+      historyEntries.forEach(([date, entry]) => {
+        html += `
+        <div class="history-day">
+          <div class="history-date">${escapeHtml(date)}</div>
+          <div class="history-points">${entry.totalPoints || 0} pts</div>
+          <div class="history-blocks">`;
+        if (entry.blocks && entry.blocks.length > 0) {
+          entry.blocks.forEach((b) => {
+            html += `<div class="history-block">• ${escapeHtml(b.name)} (+${b.points})</div>`;
+          });
+        }
+        html += `</div></div>`;
+      });
+    }
+
+    html += `</div>`;
+
+    tabContent.innerHTML = html;
 
     document.getElementById("rule-points").addEventListener("change", (e) => {
       state.rules.pointsPerBlock = Number(e.target.value || 0);
@@ -521,7 +732,7 @@ Only emit a token when you intend to actually change the checklist right now. Ne
         });
       })
       .catch(() => {
-        select.innerHTML = `<option value="${state.rules.model}">${state.rules.model} (backend unreachable)</option>`;
+        select.innerHTML = `<option value="${state.rules.model}">${state.rules.model}</option>`;
       });
   }
 
