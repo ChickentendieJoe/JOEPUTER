@@ -386,6 +386,66 @@
     }, { once: true });
   }
 
+  const WEEK_STRUCTURE = {
+    0: { name: "Sunday", workout: "LOWER Body Day" },
+    1: { name: "Monday", workout: "PUSH Day" },
+    2: { name: "Tuesday", workout: "PULL Day" },
+    3: { name: "Wednesday", workout: "LEG Day" },
+    4: { name: "Thursday", workout: "OFF" },
+    5: { name: "Friday", workout: "OFF" },
+    6: { name: "Saturday", workout: "UPPER Body Day" },
+  };
+
+  function renderWeeklyLayout() {
+    let html = `<div class="date-header">${escapeHtml(formatDate())}</div>
+    <h2 class="section-title">Weekly Schedule</h2>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn secondary" id="back-to-daily-btn" style="flex:1;">← Back to Daily</button>
+    </div>`;
+
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">`;
+
+    for (let dayNum = 1; dayNum <= 7; dayNum++) {
+      const dayOfWeek = dayNum % 7;
+      const dayInfo = WEEK_STRUCTURE[dayOfWeek];
+      const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayOfWeek];
+
+      html += `<div class="card" style="padding:12px;">
+        <div style="font-weight:700;color:var(--gold);margin-bottom:8px;text-align:center;">${dayName}</div>`;
+
+      if (dayInfo.workout !== "OFF") {
+        html += `<div style="font-size:12px;background:var(--card-alt);padding:6px;border-radius:4px;margin-bottom:6px;border-left:3px solid var(--gold);">
+          <div style="font-weight:600;color:var(--gold);">${escapeHtml(dayInfo.workout)}</div>
+          <div style="color:var(--text-dim);font-size:11px;">7:00 - 9:00</div>
+        </div>`;
+      } else {
+        html += `<div style="font-size:12px;color:var(--text-dim);padding:6px;margin-bottom:6px;text-align:center;">Rest Day</div>`;
+      }
+
+      html += `<div style="font-size:12px;background:var(--card-alt);padding:6px;border-radius:4px;margin-bottom:6px;border-left:3px solid var(--blue);">
+        <div style="font-weight:600;color:var(--blue);">Work Shift</div>
+        <div style="color:var(--text-dim);font-size:11px;">9:30 - 6:30</div>
+      </div>
+      <div style="font-size:12px;background:var(--card-alt);padding:6px;border-radius:4px;border-left:3px solid var(--purple);">
+        <div style="font-weight:600;color:var(--purple);">Aphantasia Grind</div>
+        <div style="color:var(--text-dim);font-size:11px;">7:00 - 11:00</div>
+      </div>`;
+
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    tabContent.innerHTML = html;
+
+    const backBtn = document.getElementById("back-to-daily-btn");
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        render();
+      });
+    }
+  }
+
   function renderToday() {
     const pts = state.schedule.filter((b) => b.done).reduce((sum, b) => sum + Number(b.points || 0), 0);
     const min = Number(state.rules.dailyMinimum || 0);
@@ -421,7 +481,8 @@
 
     html += `<h2 class="section-title">Schedule</h2>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn secondary" id="weekly-preset-btn" style="flex:1;">📅 Weekly Preset</button>
+      <button class="btn secondary" id="weekly-view-toggle" style="flex:1;">📅 Weekly View</button>
+      <button class="btn secondary" id="weekly-preset-btn" style="flex:1;">⚡ Load Preset</button>
     </div>
     <div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
@@ -518,6 +579,13 @@
         if (el) el.querySelector(".block-name").click();
       }, 100);
     });
+
+    const weeklyViewToggle = document.getElementById("weekly-view-toggle");
+    if (weeklyViewToggle) {
+      weeklyViewToggle.addEventListener("click", () => {
+        renderWeeklyLayout();
+      });
+    }
 
     const weeklyPresetBtn = document.getElementById("weekly-preset-btn");
     if (weeklyPresetBtn) {
