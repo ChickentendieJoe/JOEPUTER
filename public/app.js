@@ -419,18 +419,22 @@
       </div>`).join("")}
     </div>` : ""}`;
 
-    html += `<h2 class="section-title">Schedule</h2><div class="card" id="schedule-card">`;
+    html += `<h2 class="section-title">Schedule</h2>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn secondary" id="weekly-preset-btn" style="flex:1;">📅 Weekly Preset</button>
+    </div>
+    <div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
       html += `<div class="mission-empty">No blocks yet.</div>`;
     } else {
       state.schedule
         .slice()
         .sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
-        .forEach((b) => {
+        .forEach((b, idx) => {
           const world = WORLD_DEFS.find((w) => w.id === b.worldId);
           const worldLabel = world ? `[${world.name}]` : "";
           html += `
-          <div class="block ${b.done ? "done" : ""}" data-id="${b.id}">
+          <div class="block ${b.done ? "done" : ""}" data-id="${b.id}" draggable="true" style="cursor:grab;">
             <input type="checkbox" class="block-done" ${b.done ? "checked" : ""} />
             <div class="block-fields">
               <span style="font-size:11px; color:var(--gold); font-weight:700; flex-shrink:0;">${escapeHtml(worldLabel)}</span>
@@ -513,6 +517,67 @@
         const el = document.querySelector(`[data-id="${newBlock.id}"]`);
         if (el) el.querySelector(".block-name").click();
       }, 100);
+    });
+
+    const weeklyPresetBtn = document.getElementById("weekly-preset-btn");
+    if (weeklyPresetBtn) {
+      weeklyPresetBtn.addEventListener("click", () => {
+        showConfirmModal("Load Push/Pull/Legs + Work + Aphantasia weekly schedule?", () => {
+          state.schedule = [
+            { id: uid(), start: "07:00", end: "09:00", name: "PUSH Day", points: 30, done: false, worldId: "workout" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+            { id: uid(), start: "07:00", end: "09:00", name: "PULL Day", points: 30, done: false, worldId: "workout" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+            { id: uid(), start: "07:00", end: "09:00", name: "LEG Day", points: 30, done: false, worldId: "workout" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+            { id: uid(), start: "07:00", end: "09:00", name: "UPPER Body Day", points: 30, done: false, worldId: "workout" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+            { id: uid(), start: "07:00", end: "09:00", name: "LOWER Body Day", points: 30, done: false, worldId: "workout" },
+            { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+            { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+          ];
+          saveState();
+          renderToday();
+        });
+      });
+    }
+
+    let draggedBlock = null;
+    document.querySelectorAll("#schedule-card .block").forEach((el) => {
+      el.addEventListener("dragstart", () => {
+        draggedBlock = el;
+        el.style.opacity = "0.5";
+      });
+      el.addEventListener("dragend", () => {
+        el.style.opacity = "1";
+        draggedBlock = null;
+      });
+      el.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (draggedBlock && draggedBlock !== el) {
+          const rect = el.getBoundingClientRect();
+          const middle = rect.top + rect.height / 2;
+          if (e.clientY < middle) {
+            el.parentNode.insertBefore(draggedBlock, el);
+          } else {
+            el.parentNode.insertBefore(draggedBlock, el.nextSibling);
+          }
+        }
+      });
+    });
+    document.getElementById("schedule-card").addEventListener("drop", () => {
+      const blockOrder = Array.from(document.querySelectorAll("#schedule-card .block")).map(el => {
+        const id = el.dataset.id;
+        return state.schedule.find(b => b.id === id);
+      });
+      state.schedule = blockOrder.filter(b => b);
+      saveState();
     });
 
     document.querySelectorAll("#schedule-card .block").forEach((row) => {
