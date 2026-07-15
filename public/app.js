@@ -169,7 +169,7 @@
     return {
       meta: { lastResetDate: today, lastFeedResetDate: today },
       schedule: defaultSchedule(),
-      schedules: { "Work 9:30-6:30": defaultSchedule() },
+      schedules: {},
       worlds,
       history: {},
       rules: {
@@ -227,7 +227,8 @@
 
   let state = loadState();
   let activeTab = "today";
-  let activeWorldId = "basketball";
+  let activeWorldId = null;
+  let worldExpanded = false;
   let backendOnline = true;
   let feedSentences = [];
   let feedIndex = 0;
@@ -487,12 +488,26 @@
   function renderWorlds() {
     let html = `<div class="world-selector">`;
     WORLD_DEFS.forEach((w) => {
-      html += `<button class="world-btn ${w.id === activeWorldId ? "active" : ""}" data-id="${w.id}">${escapeHtml(w.name)}</button>`;
+      html += `<button class="world-btn ${w.id === activeWorldId && worldExpanded ? "active" : ""}" data-id="${w.id}">${escapeHtml(w.name)}</button>`;
     });
     html += `</div>`;
 
+    if (!activeWorldId || !worldExpanded) {
+      tabContent.innerHTML = html;
+      document.querySelectorAll(".world-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          activeWorldId = btn.dataset.id;
+          worldExpanded = true;
+          renderWorlds();
+        });
+      });
+      return;
+    }
+
     const def = worldDef(activeWorldId);
     const wstate = state.worlds[activeWorldId];
+
+    html += `<button class="btn secondary" id="close-world-btn" style="width:100%;margin-bottom:12px;">← Back to Worlds</button>`;
 
     html += `
     <div class="card world-goal">
@@ -554,15 +569,16 @@
 
     tabContent.innerHTML = html;
 
-    const chatLog = document.getElementById("chat-log");
-    if (chatLog) chatLog.scrollTop = chatLog.scrollHeight;
-
-    document.querySelectorAll(".world-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        activeWorldId = btn.dataset.id;
+    const closeBtn = document.getElementById("close-world-btn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        worldExpanded = false;
         renderWorlds();
       });
-    });
+    }
+
+    const chatLog = document.getElementById("chat-log");
+    if (chatLog) chatLog.scrollTop = chatLog.scrollHeight;
 
     document.querySelector(".goal-input").addEventListener("change", (e) => {
       wstate.goal = e.target.value;
@@ -828,4 +844,12 @@
 
   setInterval(updateBanner, 15000);
   render();
+
+  // Hide loading, show app
+  setTimeout(() => {
+    const loading = document.getElementById("loading");
+    const app = document.getElementById("app");
+    if (loading) loading.style.display = "none";
+    if (app) app.style.display = "flex";
+  }, 300);
 })();
