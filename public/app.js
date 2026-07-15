@@ -169,6 +169,7 @@
     return {
       meta: { lastResetDate: today, lastFeedResetDate: today },
       schedule: defaultSchedule(),
+      schedules: { "Work 9:30-6:30": defaultSchedule() },
       worlds,
       history: {},
       rules: {
@@ -192,6 +193,7 @@
     const fresh = defaultState();
     state.meta = state.meta || fresh.meta;
     state.schedule = Array.isArray(state.schedule) ? state.schedule : fresh.schedule;
+    state.schedules = state.schedules || fresh.schedules;
     state.worlds = state.worlds || fresh.worlds;
     state.history = state.history || {};
     state.rules = Object.assign({}, fresh.rules, state.rules || {});
@@ -333,6 +335,13 @@
       html += `<div class="punishment"><b>Below minimum:</b> ${escapeHtml(state.rules.punishmentText)}</div>`;
     }
 
+    const scheduleNames = Object.keys(state.schedules || {});
+    html += `<h2 class="section-title">📋 Manage Schedules</h2>
+    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${scheduleNames.map((name, i) => `<button class="btn" data-schedule-load="${i}" style="flex:1;min-width:100px;">${escapeHtml(name)}</button>`).join("")}
+      <button class="btn secondary" id="save-schedule-btn" style="flex:1;min-width:100px;">💾 Save</button>
+    </div>`;
+
     html += `<h2 class="section-title">Schedule</h2><div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
       html += `<div class="mission-empty">No blocks yet.</div>`;
@@ -361,6 +370,27 @@
     <button class="btn full" id="add-block-btn">+ Add block</button>`;
 
     tabContent.innerHTML = html;
+
+    document.querySelectorAll("[data-schedule-load]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.scheduleLoad);
+        const scheduleNames = Object.keys(state.schedules || {});
+        if (scheduleNames[idx]) {
+          state.schedule = JSON.parse(JSON.stringify(state.schedules[scheduleNames[idx]]));
+          saveState();
+          renderToday();
+        }
+      });
+    });
+
+    document.getElementById("save-schedule-btn").addEventListener("click", () => {
+      const name = prompt("Schedule name:");
+      if (name && name.trim()) {
+        state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
+        saveState();
+        renderToday();
+      }
+    });
 
     document.getElementById("add-block-btn").addEventListener("click", () => {
       const newBlock = {
