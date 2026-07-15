@@ -183,21 +183,30 @@
   }
 
   function loadState() {
-    let state;
+    let state = defaultState();
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      state = raw ? JSON.parse(raw) : defaultState();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        state = {
+          meta: parsed.meta || state.meta,
+          schedule: [],
+          schedules: parsed.schedules || {},
+          worlds: parsed.worlds || state.worlds,
+          history: parsed.history || {},
+          rules: Object.assign({}, state.rules, parsed.rules || {}),
+        };
+      }
     } catch (e) {
       state = defaultState();
+      state.schedule = [];
     }
 
-    const fresh = defaultState();
-    state.meta = state.meta || fresh.meta;
-    state.schedule = Array.isArray(state.schedule) ? state.schedule : [];
-    state.schedules = state.schedules || fresh.schedules;
-    state.worlds = state.worlds || fresh.worlds;
+    state.schedule = state.schedule || [];
+    state.schedules = state.schedules || {};
+    state.worlds = state.worlds || defaultState().worlds;
     state.history = state.history || {};
-    state.rules = Object.assign({}, fresh.rules, state.rules || {});
+    state.rules = state.rules || defaultState().rules;
 
     WORLD_DEFS.forEach((w) => {
       if (!state.worlds[w.id]) state.worlds[w.id] = fresh.worlds[w.id];
@@ -376,26 +385,33 @@
 
     tabContent.innerHTML = html;
 
-    document.getElementById("new-schedule-btn").addEventListener("click", () => {
-      const name = prompt("New schedule name (e.g., Chill Day, Grind Day):");
-      if (name && name.trim()) {
-        state.schedules[name.trim()] = [];
-        state.schedule = [];
-        saveState();
-        alert("✅ Schedule created! Add blocks now.");
-        renderToday();
-      }
-    });
+    const newBtn = document.getElementById("new-schedule-btn");
+    const saveBtn = document.getElementById("save-schedule-btn");
 
-    document.getElementById("save-schedule-btn").addEventListener("click", () => {
-      const name = prompt("Save current schedule as:");
-      if (name && name.trim()) {
-        state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
-        saveState();
-        alert("Schedule saved! ✅");
-        renderToday();
-      }
-    });
+    if (newBtn) {
+      newBtn.addEventListener("click", () => {
+        const name = prompt("New schedule name (e.g., Chill Day, Grind Day):");
+        if (name && name.trim()) {
+          state.schedules[name.trim()] = [];
+          state.schedule = [];
+          saveState();
+          alert("✅ Schedule created! Add blocks now.");
+          renderToday();
+        }
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        const name = prompt("Save current schedule as:");
+        if (name && name.trim()) {
+          state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
+          saveState();
+          alert("Schedule saved! ✅");
+          renderToday();
+        }
+      });
+    }
 
     document.querySelectorAll("[data-load-schedule]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -529,7 +545,8 @@
       html += `<div class="mission-empty" style="font-size:12px;">No blocks scheduled for this world today</div>`;
     } else {
       blocksForWorld.forEach((b) => {
-        html += `<div class="mission-item"><input type="checkbox" ${b.done ? "checked" : ""} disabled /> <span>${escapeHtml(b.name)} (${b.start}–${b.end})</span></div>`;
+        const alreadyExists = wstate.missions.some(m => m.blockId === b.id);
+        html += `<div class="mission-item" style="justify-content:space-between;"><div style="display:flex;gap:8px;align-items:center;flex:1;"><input type="checkbox" ${b.done ? "checked" : ""} disabled /> <span>${escapeHtml(b.name)} (${b.start}–${b.end})</span></div><button class="icon-btn" data-add-block-mission="${b.id}" style="font-size:12px;">${alreadyExists ? "✓" : "➕"}</button></div>`;
       });
     }
 
@@ -608,6 +625,23 @@
       wstate.goalLocked = !wstate.goalLocked;
       saveState();
       renderWorlds();
+    });
+
+    document.querySelectorAll("[data-add-block-mission]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const blockId = btn.dataset.addBlockMission;
+        const block = state.schedule.find(b => b.id === blockId);
+        if (block && !wstate.missions.some(m => m.blockId === blockId)) {
+          wstate.missions.push({
+            id: uid(),
+            blockId: blockId,
+            text: block.name,
+            done: false,
+          });
+          saveState();
+          renderWorlds();
+        }
+      });
     });
 
     document.getElementById("add-mission-btn").addEventListener("click", () => {
