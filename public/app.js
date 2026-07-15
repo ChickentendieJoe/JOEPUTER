@@ -3,6 +3,19 @@
 
   const STORAGE_KEY = "joeputer_state_v3";
 
+  const PUNISHMENTS = [
+    "No phone scrolling tonight. Lights out by 9:30, and tomorrow you owe a double session.",
+    "No TikTok for 48 hours. Use that time for a world instead.",
+    "Cold shower tomorrow morning. No excuses.",
+    "No Netflix tonight. Read or work on a world mission instead.",
+    "Extra 30-min session tomorrow on your worst world.",
+    "No sugar for 24 hours. Discipline compounds.",
+    "Early bed tonight (9 PM). Your body needs it.",
+    "Skip one meal and donate the money. Hunger teaches.",
+    "10 push-ups every hour until bedtime. Earn back your focus.",
+    "Write down why you failed today. No phone until you do.",
+  ];
+
   const WORLD_DEFS = [
     {
       id: "basketball",
@@ -125,11 +138,12 @@
   function defaultSchedule() {
     return [
       { id: uid(), start: "06:30", end: "07:15", name: "Morning workout", points: 10, done: false, worldId: "workout" },
-      { id: uid(), start: "07:15", end: "08:00", name: "Daycare drop-off prep", points: 10, done: false, worldId: "daycare" },
-      { id: uid(), start: "09:00", end: "10:30", name: "Content filming/editing", points: 15, done: false, worldId: "content" },
-      { id: uid(), start: "13:00", end: "14:00", name: "Basketball reps", points: 10, done: false, worldId: "basketball" },
-      { id: uid(), start: "17:00", end: "18:00", name: "Daycare pickup + play", points: 10, done: false, worldId: "daycare" },
-      { id: uid(), start: "20:00", end: "20:30", name: "Aphantasia brand work", points: 10, done: false, worldId: "aphantasia" },
+      { id: uid(), start: "07:15", end: "08:00", name: "Daycare drop-off", points: 10, done: false, worldId: "daycare" },
+      { id: uid(), start: "08:00", end: "09:30", name: "Content prep", points: 10, done: false, worldId: "content" },
+      { id: uid(), start: "09:30", end: "18:30", name: "Work", points: 30, done: false, worldId: "workout" },
+      { id: uid(), start: "18:30", end: "19:30", name: "Daycare pickup + play", points: 10, done: false, worldId: "daycare" },
+      { id: uid(), start: "19:30", end: "20:00", name: "Basketball reps", points: 10, done: false, worldId: "basketball" },
+      { id: uid(), start: "20:00", end: "21:00", name: "Aphantasia brand", points: 15, done: false, worldId: "aphantasia" },
     ];
   }
 
@@ -151,15 +165,16 @@
       };
     });
 
+    const today = todayStr();
     return {
-      meta: { lastResetDate: todayStr() },
+      meta: { lastResetDate: today, lastFeedResetDate: today },
       schedule: defaultSchedule(),
       worlds,
       history: {},
       rules: {
         pointsPerBlock: 10,
         dailyMinimum: 40,
-        punishmentText: "No phone scrolling tonight. Lights out by 9:30, and tomorrow you owe a double session.",
+        punishmentText: PUNISHMENTS[Math.floor(Math.random() * PUNISHMENTS.length)],
         model: "claude-haiku-4-5-20251001",
       },
     };
@@ -185,15 +200,20 @@
       if (!state.worlds[w.id]) state.worlds[w.id] = fresh.worlds[w.id];
     });
 
-    if (state.meta.lastResetDate !== todayStr()) {
+    const today = todayStr();
+    if (state.meta.lastResetDate !== today) {
       state.schedule.forEach((b) => (b.done = false));
-      const today = todayStr();
       state.history[today] = { blocks: [], totalPoints: 0 };
       state.meta.lastResetDate = today;
+      state.rules.punishmentText = PUNISHMENTS[Math.floor(Math.random() * PUNISHMENTS.length)];
     }
 
-    if (!state.history[todayStr()]) {
-      state.history[todayStr()] = { blocks: [], totalPoints: 0 };
+    if (state.meta.lastFeedResetDate !== today) {
+      state.meta.lastFeedResetDate = today;
+    }
+
+    if (!state.history[today]) {
+      state.history[today] = { blocks: [], totalPoints: 0 };
     }
 
     return state;
@@ -267,6 +287,32 @@
 
   // ---------- TODAY ----------
 
+  function showWorldPicker(block, row, el) {
+    const popup = document.createElement("div");
+    popup.style.cssText = "position:absolute;background:var(--card-alt);border:1px solid var(--gold);border-radius:8px;z-index:1000;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.5);";
+
+    popup.innerHTML = WORLD_DEFS.map((w) => `<div data-id="${w.id}" style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);${w.id === block.worldId ? "background:var(--card);color:var(--gold);font-weight:700;" : "color:var(--text-dim);hover:color:var(--text);"}}">${w.name}</div>`).join("");
+
+    document.body.appendChild(popup);
+    const rect = el.getBoundingClientRect();
+    popup.style.top = rect.bottom + 5 + "px";
+    popup.style.left = rect.left + "px";
+
+    popup.querySelectorAll("[data-id]").forEach((option) => {
+      option.addEventListener("click", (e) => {
+        e.stopPropagation();
+        block.worldId = option.dataset.id;
+        saveState();
+        document.body.removeChild(popup);
+        renderToday();
+      });
+    });
+
+    document.addEventListener("click", () => {
+      if (document.body.contains(popup)) document.body.removeChild(popup);
+    }, { once: true });
+  }
+
   function renderToday() {
     const pts = state.schedule.filter((b) => b.done).reduce((sum, b) => sum + Number(b.points || 0), 0);
     const min = Number(state.rules.dailyMinimum || 0);
@@ -317,50 +363,38 @@
     tabContent.innerHTML = html;
 
     document.getElementById("add-block-btn").addEventListener("click", () => {
-      showAddBlockDialog();
-    });
-
-    function showAddBlockDialog() {
-      const worldOptions = WORLD_DEFS.map((w) => `${w.id}:${w.name}`).join("|");
-      const prompt_text = `Enter block details (separated by |):\nFormat: world|start-time|end-time|mission-name\n\nWorlds: ${worldOptions}\n\nExample: basketball|13:00|14:00|50 makes from 3-point spots`;
-      const input = prompt(prompt_text);
-      if (!input) return;
-
-      const parts = input.split("|").map((s) => s.trim());
-      if (parts.length !== 4) {
-        alert("Invalid format. Use: world|start|end|mission");
-        return;
-      }
-
-      const [worldId, start, end, name] = parts;
-      const world = WORLD_DEFS.find((w) => w.id === worldId);
-      if (!world) {
-        alert(`World "${worldId}" not found.`);
-        return;
-      }
-
-      if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) {
-        alert("Time format must be HH:MM");
-        return;
-      }
-
-      state.schedule.push({
+      const newBlock = {
         id: uid(),
-        start,
-        end,
-        name,
-        points: Number(state.rules.pointsPerBlock || 10),
+        start: "09:00",
+        end: "10:00",
+        name: "Click to edit",
+        points: 10,
         done: false,
-        worldId,
-      });
+        worldId: "workout",
+        _isNew: true,
+      };
+      state.schedule.push(newBlock);
       saveState();
       renderToday();
-    }
+      setTimeout(() => {
+        const el = document.querySelector(`[data-id="${newBlock.id}"]`);
+        if (el) el.querySelector(".block-name").click();
+      }, 100);
+    });
 
     document.querySelectorAll("#schedule-card .block").forEach((row) => {
       const id = row.dataset.id;
       const block = state.schedule.find((b) => b.id === id);
       if (!block) return;
+
+      const worldSpan = row.querySelector("span");
+      if (worldSpan) {
+        worldSpan.style.cursor = "pointer";
+        worldSpan.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showWorldPicker(block, row, worldSpan);
+        });
+      }
 
       row.querySelector(".block-done").addEventListener("change", (e) => {
         block.done = e.target.checked;
@@ -613,6 +647,13 @@
   }
 
   function renderFeed() {
+    if (state.meta.lastFeedResetDate !== todayStr()) {
+      feedSentences = [];
+      feedIndex = 0;
+      state.meta.lastFeedResetDate = todayStr();
+      saveState();
+    }
+
     if (feedSentences.length === 0) {
       feedSentences = getAllFeedSentences();
     }
