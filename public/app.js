@@ -334,6 +334,32 @@
     input.focus();
   }
 
+  function showConfirmModal(message, onConfirm) {
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000;";
+    modal.innerHTML = `<div style="background:var(--card);padding:20px;border-radius:8px;min-width:280px;border:2px solid var(--danger);">
+      <div style="margin-bottom:16px;color:var(--text);font-size:14px;">${message}</div>
+      <div style="display:flex;gap:8px;">
+        <button style="flex:1;padding:8px;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;font-weight:700;">Delete</button>
+        <button style="flex:1;padding:8px;background:var(--border);color:var(--text);border:none;border-radius:4px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>`;
+
+    document.body.appendChild(modal);
+    const [confirmBtn, cancelBtn] = modal.querySelectorAll("button");
+
+    const cleanup = () => {
+      if (document.body.contains(modal)) document.body.removeChild(modal);
+    };
+
+    confirmBtn.addEventListener("click", () => {
+      cleanup();
+      onConfirm();
+    });
+
+    cancelBtn.addEventListener("click", cleanup);
+  }
+
   function showWorldPicker(block, row, el) {
     const popup = document.createElement("div");
     popup.style.cssText = "position:absolute;background:var(--card-alt);border:1px solid var(--gold);border-radius:8px;z-index:1000;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.5);";
@@ -387,7 +413,10 @@
       <button class="btn" id="save-schedule-btn" style="flex:1;">💾 Save</button>
     </div>
     ${scheduleNames.length > 0 ? `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;">
-      ${scheduleNames.map(name => `<button class="btn secondary" data-load-schedule="${name}" style="flex:1;min-width:80px;font-size:12px;">📂 ${escapeHtml(name)}</button>`).join("")}
+      ${scheduleNames.map(name => `<div style="position:relative;flex:1;min-width:80px;">
+        <button class="btn secondary" data-load-schedule="${name}" style="width:100%;font-size:12px;">📂 ${escapeHtml(name)}</button>
+        <button class="icon-btn" data-delete-schedule="${name}" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;padding:0;font-size:12px;background:var(--danger);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>`).join("")}
     </div>` : ""}`;
 
     html += `<h2 class="section-title">Schedule</h2><div class="card" id="schedule-card">`;
@@ -451,6 +480,18 @@
           saveState();
           renderToday();
         }
+      });
+    });
+
+    document.querySelectorAll("[data-delete-schedule]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const name = btn.dataset.deleteSchedule;
+        showConfirmModal(`Delete schedule "${escapeHtml(name)}"?`, () => {
+          delete state.schedules[name];
+          saveState();
+          renderToday();
+        });
       });
     });
 
