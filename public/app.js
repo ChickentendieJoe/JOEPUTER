@@ -152,6 +152,7 @@
     WORLD_DEFS.forEach((w) => {
       worlds[w.id] = {
         goal: w.id === "basketball" ? "Dunk by 2027 & get good at basketball" : `Master ${w.name}`,
+        goalLocked: false,
         missions: [],
         notes: [],
         chat: [
@@ -192,7 +193,7 @@
 
     const fresh = defaultState();
     state.meta = state.meta || fresh.meta;
-    state.schedule = Array.isArray(state.schedule) ? state.schedule : fresh.schedule;
+    state.schedule = Array.isArray(state.schedule) ? state.schedule : [];
     state.schedules = state.schedules || fresh.schedules;
     state.worlds = state.worlds || fresh.worlds;
     state.history = state.history || {};
@@ -376,11 +377,12 @@
     tabContent.innerHTML = html;
 
     document.getElementById("new-schedule-btn").addEventListener("click", () => {
-      const name = prompt("New schedule name:");
+      const name = prompt("New schedule name (e.g., Chill Day, Grind Day):");
       if (name && name.trim()) {
         state.schedules[name.trim()] = [];
         state.schedule = [];
         saveState();
+        alert("✅ Schedule created! Add blocks now.");
         renderToday();
       }
     });
@@ -511,15 +513,32 @@
 
     html += `
     <div class="card world-goal">
-      <label class="field-label">Main Goal</label>
-      <input type="text" class="goal-input" value="${escapeHtml(wstate.goal)}" placeholder="e.g., Dunk by 2027" />
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="field-label" style="flex:1;margin:0;">Main Goal</label>
+        <button class="icon-btn" id="goal-lock-btn" style="font-size:18px;">${wstate.goalLocked ? "🔒" : "🔓"}</button>
+      </div>
+      <input type="text" class="goal-input" value="${escapeHtml(wstate.goal)}" placeholder="e.g., Dunk by 2027" ${wstate.goalLocked ? "disabled" : ""} />
     </div>
 
-    <h2 class="section-title">Missions (Edit Daily)</h2>
+    <h2 class="section-title">📝 Missions</h2>
+    <h3 style="font-size:12px;color:var(--text-dim);margin:0 0 8px 0;text-transform:uppercase;letter-spacing:1px;">Today's blocks in this world:</h3>
+    <div class="card" id="block-missions" style="background:rgba(212,175,55,0.05);border:1px solid var(--gold-dim);margin-bottom:12px;">`;
+
+    const blocksForWorld = state.schedule.filter(b => b.worldId === activeWorldId);
+    if (blocksForWorld.length === 0) {
+      html += `<div class="mission-empty" style="font-size:12px;">No blocks scheduled for this world today</div>`;
+    } else {
+      blocksForWorld.forEach((b) => {
+        html += `<div class="mission-item"><input type="checkbox" ${b.done ? "checked" : ""} disabled /> <span>${escapeHtml(b.name)} (${b.start}–${b.end})</span></div>`;
+      });
+    }
+
+    html += `</div>
+    <h3 style="font-size:12px;color:var(--text-dim);margin:0 0 8px 0;text-transform:uppercase;letter-spacing:1px;">Custom missions:</h3>
     <div class="card" id="missions-editor">`;
 
     if (wstate.missions.length === 0) {
-      html += `<div class="mission-empty">No missions yet. Add one below.</div>`;
+      html += `<div class="mission-empty">Add custom missions below</div>`;
     } else {
       wstate.missions.forEach((m) => {
         html += `
@@ -583,6 +602,12 @@
     document.querySelector(".goal-input").addEventListener("change", (e) => {
       wstate.goal = e.target.value;
       saveState();
+    });
+
+    document.getElementById("goal-lock-btn").addEventListener("click", () => {
+      wstate.goalLocked = !wstate.goalLocked;
+      saveState();
+      renderWorlds();
     });
 
     document.getElementById("add-mission-btn").addEventListener("click", () => {
