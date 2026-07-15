@@ -336,11 +336,14 @@
     }
 
     const scheduleNames = Object.keys(state.schedules || {});
-    html += `<h2 class="section-title">📋 Manage Schedules</h2>
-    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;">
-      ${scheduleNames.map((name, i) => `<button class="btn" data-schedule-load="${i}" style="flex:1;min-width:100px;">${escapeHtml(name)}</button>`).join("")}
-      <button class="btn secondary" id="save-schedule-btn" style="flex:1;min-width:100px;">💾 Save</button>
-    </div>`;
+    html += `<h2 class="section-title">📋 Schedules</h2>
+    <div class="card" style="display:flex;gap:8px;margin-bottom:8px;">
+      <button class="btn" id="new-schedule-btn" style="flex:1;">➕ New</button>
+      <button class="btn" id="save-schedule-btn" style="flex:1;">💾 Save</button>
+    </div>
+    ${scheduleNames.length > 0 ? `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${scheduleNames.map(name => `<button class="btn secondary" data-load-schedule="${name}" style="flex:1;min-width:80px;font-size:12px;">📂 ${escapeHtml(name)}</button>`).join("")}
+    </div>` : ""}`;
 
     html += `<h2 class="section-title">Schedule</h2><div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
@@ -371,25 +374,35 @@
 
     tabContent.innerHTML = html;
 
-    document.querySelectorAll("[data-schedule-load]").forEach((btn) => {
+    document.getElementById("new-schedule-btn").addEventListener("click", () => {
+      const name = prompt("New schedule name:");
+      if (name && name.trim()) {
+        state.schedules[name.trim()] = [];
+        state.schedule = [];
+        saveState();
+        renderToday();
+      }
+    });
+
+    document.getElementById("save-schedule-btn").addEventListener("click", () => {
+      const name = prompt("Save current schedule as:");
+      if (name && name.trim()) {
+        state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
+        saveState();
+        alert("Schedule saved! ✅");
+        renderToday();
+      }
+    });
+
+    document.querySelectorAll("[data-load-schedule]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const idx = Number(btn.dataset.scheduleLoad);
-        const scheduleNames = Object.keys(state.schedules || {});
-        if (scheduleNames[idx]) {
-          state.schedule = JSON.parse(JSON.stringify(state.schedules[scheduleNames[idx]]));
+        const name = btn.dataset.loadSchedule;
+        if (state.schedules[name]) {
+          state.schedule = JSON.parse(JSON.stringify(state.schedules[name]));
           saveState();
           renderToday();
         }
       });
-    });
-
-    document.getElementById("save-schedule-btn").addEventListener("click", () => {
-      const name = prompt("Schedule name:");
-      if (name && name.trim()) {
-        state.schedules[name.trim()] = JSON.parse(JSON.stringify(state.schedule));
-        saveState();
-        renderToday();
-      }
     });
 
     document.getElementById("add-block-btn").addEventListener("click", () => {
