@@ -453,7 +453,24 @@
     const underMinimum = pts < min;
 
     let html = `<div class="date-header">${escapeHtml(formatDate())}</div>
-    <h2 class="section-title">Scorecard</h2>
+    <h2 class="section-title">Your Week</h2>`;
+
+    // Weekly view inline
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;">`;
+    for (let dayNum = 1; dayNum <= 7; dayNum++) {
+      const dayOfWeek = dayNum % 7;
+      const dayInfo = WEEK_STRUCTURE[dayOfWeek];
+      const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayOfWeek];
+      const worldColors = { "PUSH Day": "#d4af37", "PULL Day": "#d4af37", "LEG Day": "#d4af37", "UPPER Body Day": "#d4af37", "LOWER Body Day": "#d4af37", "Work Shift": "#00a3ff", "Aphantasia Grind": "#b366ff", "OFF": "#9a978e" };
+      const color = dayInfo.workout === "OFF" ? "#9a978e" : "#d4af37";
+      html += `<div class="card" style="padding:8px;text-align:center;border-left:4px solid ${color};">
+        <div style="font-weight:700;color:${color};font-size:12px;">${dayName}</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${dayInfo.workout === "OFF" ? "Rest" : dayInfo.workout.split(" ")[0]}</div>
+      </div>`;
+    }
+    html += `</div>`;
+
+    html += `<h2 class="section-title">Today's Scorecard</h2>
     <div class="card scorecard">
       <div>
         <div class="points-num">${pts}</div>
@@ -466,25 +483,9 @@
       html += `<div class="punishment"><b>Below minimum:</b> ${escapeHtml(state.rules.punishmentText)}</div>`;
     }
 
-    const scheduleNames = Object.keys(state.schedules || {});
-    html += `<h2 class="section-title">📋 Schedules</h2>
-    <div class="card" style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn" id="new-schedule-btn" style="flex:1;">➕ New</button>
-      <button class="btn" id="save-schedule-btn" style="flex:1;">💾 Save</button>
-    </div>
-    ${scheduleNames.length > 0 ? `<div class="card" style="display:flex;gap:6px;flex-wrap:wrap;">
-      ${scheduleNames.map(name => `<div style="position:relative;flex:1;min-width:80px;">
-        <button class="btn secondary" data-load-schedule="${name}" style="width:100%;font-size:12px;">📂 ${escapeHtml(name)}</button>
-        <button class="icon-btn" data-delete-schedule="${name}" style="position:absolute;top:-8px;right:-8px;width:24px;height:24px;padding:0;font-size:12px;background:var(--danger);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>
-      </div>`).join("")}
-    </div>` : ""}`;
+    html += `<h2 class="section-title">Today's Schedule</h2>`;
 
-    html += `<h2 class="section-title">Schedule</h2>
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn secondary" id="weekly-view-toggle" style="flex:1;">📅 Weekly View</button>
-      <button class="btn secondary" id="weekly-preset-btn" style="flex:1;">⚡ Load Preset</button>
-    </div>
-    <div class="card" id="schedule-card">`;
+    html += `<div class="card" id="schedule-card">`;
     if (state.schedule.length === 0) {
       html += `<div class="mission-empty">No blocks yet.</div>`;
     } else {
@@ -513,52 +514,31 @@
 
     tabContent.innerHTML = html;
 
-    const newBtn = document.getElementById("new-schedule-btn");
-    const saveBtn = document.getElementById("save-schedule-btn");
-
-    if (newBtn) {
-      newBtn.addEventListener("click", () => {
-        showInputModal("New Schedule", "e.g., Chill Day, Grind Day", (name) => {
-          state.schedules[name] = [];
-          state.schedule = [];
-          saveState();
-          renderToday();
-        });
-      });
+    // Auto-load preset if schedule empty
+    if (state.schedule.length === 0) {
+      state.schedule = [
+        { id: uid(), start: "07:00", end: "09:00", name: "PUSH Day", points: 30, done: false, worldId: "workout" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+        { id: uid(), start: "07:00", end: "09:00", name: "PULL Day", points: 30, done: false, worldId: "workout" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+        { id: uid(), start: "07:00", end: "09:00", name: "LEG Day", points: 30, done: false, worldId: "workout" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+        { id: uid(), start: "07:00", end: "09:00", name: "UPPER Body Day", points: 30, done: false, worldId: "workout" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+        { id: uid(), start: "07:00", end: "09:00", name: "LOWER Body Day", points: 30, done: false, worldId: "workout" },
+        { id: uid(), start: "09:30", end: "18:30", name: "Work Shift", points: 50, done: false, worldId: "daycare" },
+        { id: uid(), start: "19:00", end: "23:00", name: "Aphantasia Grind", points: 40, done: false, worldId: "aphantasia" },
+      ];
+      saveState();
+      renderToday();
+      return;
     }
-
-    if (saveBtn) {
-      saveBtn.addEventListener("click", () => {
-        showInputModal("Save Schedule", "Enter schedule name", (name) => {
-          state.schedules[name] = JSON.parse(JSON.stringify(state.schedule));
-          saveState();
-          renderToday();
-        });
-      });
-    }
-
-    document.querySelectorAll("[data-load-schedule]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const name = btn.dataset.loadSchedule;
-        if (state.schedules[name]) {
-          state.schedule = JSON.parse(JSON.stringify(state.schedules[name]));
-          saveState();
-          renderToday();
-        }
-      });
-    });
-
-    document.querySelectorAll("[data-delete-schedule]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const name = btn.dataset.deleteSchedule;
-        showConfirmModal(`Delete schedule "${escapeHtml(name)}"?`, () => {
-          delete state.schedules[name];
-          saveState();
-          renderToday();
-        });
-      });
-    });
 
     document.getElementById("add-block-btn").addEventListener("click", () => {
       const newBlock = {
@@ -708,9 +688,21 @@
   }
 
   function renderWorlds() {
-    let html = `<div class="world-selector">`;
+    const worldColors = {
+      workout: { color: "#d4af37", emoji: "💪" },
+      daycare: { color: "#00a3ff", emoji: "💼" },
+      aphantasia: { color: "#b366ff", emoji: "🧠" },
+      content: { color: "#2ecc71", emoji: "🎬" },
+      basketball: { color: "#ff8c42", emoji: "🏀" }
+    };
+
+    let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;">`;
     WORLD_DEFS.forEach((w) => {
-      html += `<button class="world-btn ${w.id === activeWorldId && worldExpanded ? "active" : ""}" data-id="${w.id}">${escapeHtml(w.name)}</button>`;
+      const colors = worldColors[w.id];
+      html += `<button class="world-btn" data-id="${w.id}" style="background:${colors.color};color:#000;font-weight:700;font-size:16px;padding:20px;border:none;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div style="font-size:32px;">${colors.emoji}</div>
+        <div>${escapeHtml(w.name)}</div>
+      </button>`;
     });
     html += `</div>`;
 
